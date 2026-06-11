@@ -225,7 +225,7 @@
 
 <script>
   const SUPABASE_URL = 'https://qqaoarqphvakgocwoxhj.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxYW9hcnFwaHZha2dvY3dveGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDg0OTYsImV4cCI6MjA5NjY4NDQ5Nn0.1GpdfIjIn3F0yFIpySjzXaG3yf-WiJnDr2K5SW2Ge1I';pc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxYW9hcnFwaHZha2dvY3dveGhqIiwicm9sZSI6ImFub24iLCJpYXQiOj';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxYW9hcnFwaHZha2dvY3dveGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDg0OTYsImV4cCI6MjA5NjY4NDQ5Nn0.1GpdfIjIn3F0yFIpySjzXaG3yf-WiJnDr2K5SW2Ge1I';
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function updateClock() {
@@ -252,7 +252,6 @@
       const { data: zones, error: ze } = await sb.from('zones').select('*');
       if (ze) throw ze;
 
-      // merge zones into drivers
       const merged = drivers.map(d => {
         const z = zones.find(z => z.zone_code === d.zone);
         return { ...d, departure_order: z?.departure_order || 9, zip_count: z?.zip_codes?.length || 0 };
