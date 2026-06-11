@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Remedies — Delivery Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gold: #B8962E; --gold-light: #F5EDD6; --gold-mid: #D4AE4E;
+      --dark: #1C1C1A; --charcoal: #3D3D3A; --muted: #7A7A74;
+      --border: #E8E6E0; --bg: #FAFAF8; --white: #FFFFFF;
+      --success: #2E7D5E; --success-bg: #EAF3EE;
+      --warn: #854F0B; --warn-bg: #FEF6E7;
+      --danger: #A32D2D; --danger-bg: #FDF0F0;
+      --info: #185FA5; --info-bg: #E6F1FB;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); font-size: 14px; }
+    .topbar { background: var(--dark); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .tb-logo { display: flex; align-items: center; gap: 8px; }
+    .tb-logo-text { color: white; font-size: 15px; font-weight: 500; }
+    .tb-logo-sub { color: var(--gold); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .tb-right { display: flex; align-items: center; gap: 16px; }
+    .tb-time { color: #888780; font-size: 13px; }
+    .tb-badge { background: var(--danger-bg); color: var(--danger); font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+    .tb-badge.ok { background: var(--success-bg); color: var(--success); }
+    .main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+    .greeting { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+    .greeting-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 600; color: var(--dark); }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .stat-value.gold { color: var(--gold); }
+    .stat-value.danger { color: var(--danger); }
+    .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 10px; }
+    .drivers-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+    .driver-card { background: var(--white); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .driver-card.first { border-left: 3px solid var(--gold); border-radius: 0 12px 12px 0; }
+    .dc-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .dc-av { width: 36px; height: 36px; border-radius: 50%; background: var(--gold-light); border: 1.5px solid var(--gold); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--charcoal); flex-shrink: 0; }
+    .dc-name { font-size: 14px; font-weight: 500; }
+    .dc-zone { font-size: 12px; color: var(--muted); }
+    .dc-pill { margin-left: auto; font-size: 11px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+    .pill-first { background: var(--danger-bg); color: var(--danger); }
+    .pill-second { background: var(--warn-bg); color: var(--warn); }
+    .pill-third { background: var(--success-bg); color: var(--success); }
+    .pill-fourth { background: var(--info-bg); color: var(--info); }
+    .dc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+    .dc-stat { background: var(--bg); border-radius: 8px; padding: 8px; text-align: center; }
+    .dc-stat-val { font-size: 18px; font-weight: 500; color: var(--dark); }
+    .dc-stat-lbl { font-size: 11px; color: var(--muted); }
+    .dc-alert { font-size: 12px; padding: 6px 8px; border-radius: 8px; display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+    .dc-alert.warn { background: var(--warn-bg); color: var(--warn); }
+    .dc-alert.ok { background: var(--success-bg); color: var(--success); }
+    .dc-alert.info { background: var(--info-bg); color: var(--info); }
+    .flags-box { background: var(--white); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; }
+    .flag-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+    .flag-row:last-child { border-bottom: none; }
+    .flag-badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+    .fb-alert { background: var(--danger-bg); color: var(--danger); }
+    .fb-warn { background: var(--warn-bg); color: var(--warn); }
+    .fb-info { background: var(--info-bg); color: var(--info); }
+    .flag-text { flex: 1; color: var(--dark); }
+    .flag-zone { font-size: 12px; color: var(--muted); }
+    .resolve-btn { font-size: 12px; padding: 4px 12px; border: 0.5px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+    .resolve-btn:hover { background: var(--bg); border-color: var(--gold); }
+    .resolve-btn.done { color: var(--success); border-color: var(--success); background: var(--success-bg); }
+    .checklist-box { background: var(--white); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; }
+    .check-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+    .check-row:last-child { border-bottom: none; }
+    .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+    .check-circle.checked { background: var(--dark); border-color: var(--dark); color: var(--gold); }
+    .check-text { flex: 1; font-size: 13px; color: var(--dark); }
+    .check-text.done { color: var(--muted); text-decoration: line-through; }
+    .check-who { font-size: 12px; color: var(--muted); }
+    .prog-wrap { height: 4px; background: var(--bg); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    .prog-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.3s; width: 0%; }
+    .empty-state { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .drivers-grid { grid-template-columns: 1fr; }
+      .main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-logo">
+    <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+      <ellipse cx="11" cy="11" rx="5" ry="8" stroke="#B8962E" stroke-width="1.2" fill="none"/>
+      <line x1="11" y1="3" x2="11" y2="19" stroke="#B8962E" stroke-width="1.2"/>
+      <line x1="7" y1="8" x2="15" y2="8" stroke="#B8962E" stroke-width="0.8"/>
+      <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="#B8962E" stroke-width="0.8"/>
+      <line x1="7" y1="14" x2="15" y2="14" stroke="#B8962E" stroke-width="0.8"/>
+    </svg>
+    <div>
+      <div class="tb-logo-text">modern remedies</div>
+      <div class="tb-logo-sub">pharmacy</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="tb-time" id="clock"></span>
+    <span class="tb-badge" id="flag-badge">7 flags</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="greeting">Good morning, Jennifer</div>
+  <div class="greeting-sub" id="date-sub">Loading...</div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total deliveries today</div>
+      <div class="stat-value gold" id="total-del">—</div>
+      <div class="stat-sub">Across all 4 zones</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Flags to clear</div>
+      <div class="stat-value danger" id="flag-count">7</div>
+      <div class="stat-sub">Before drivers leave</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Reschedules from yesterday</div>
+      <div class="stat-value">4</div>
+      <div class="stat-sub">Added to today's routes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pick up orders</div>
+      <div class="stat-value">2</div>
+      <div class="stat-sub">Zone B · doctor offices</div>
+    </div>
+  </div>
+
+  <div class="section-title">Drivers — departure order</div>
+  <div class="drivers-grid" id="drivers-grid">
+    <div class="empty-state">Loading drivers...</div>
+  </div>
+
+  <div class="section-title">Flags to clear before departure</div>
+  <div class="flags-box" id="flags-box">
+    <div class="flag-row">
+      <span class="flag-badge fb-alert">Address</span>
+      <span class="flag-text">Sandra Sklar — address mismatch (PrimeRx shows FL, label shows Brooklyn)</span>
+      <span class="flag-zone">Zone D · Edgar</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+    <div class="flag-row">
+      <span class="flag-badge fb-alert">Address</span>
+      <span class="flag-text">Maria Tenorio — no apartment number on file</span>
+      <span class="flag-zone">Zone C · Luis</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+    <div class="flag-row">
+      <span class="flag-badge fb-warn">Special med</span>
+      <span class="flag-text">Kaliopi Roditis — delivery address unconfirmed</span>
+      <span class="flag-zone">Zone B · Juan</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+    <div class="flag-row">
+      <span class="flag-badge fb-warn">Special med</span>
+      <span class="flag-text">Homa Yousefzadeh — 5 prescriptions, address unconfirmed</span>
+      <span class="flag-zone">Zone D · Edgar</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+    <div class="flag-row">
+      <span class="flag-badge fb-info">Reschedule</span>
+      <span class="flag-text">Christine Walsh — rescheduled from yesterday, confirm slot</span>
+      <span class="flag-zone">Zone C · Luis</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+    <div class="flag-row">
+      <span class="flag-badge fb-info">Pickup order</span>
+      <span class="flag-text">Dr. Feldman office — pickup by 2:00 PM, added to Zone B route</span>
+      <span class="flag-zone">Zone B · Juan</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+    <div class="flag-row">
+      <span class="flag-badge fb-warn">No unit</span>
+      <span class="flag-text">Arthur Deitel — building address, no unit number</span>
+      <span class="flag-zone">Zone D · Edgar</span>
+      <button class="resolve-btn" onclick="resolveFlag(this)">Resolve</button>
+    </div>
+  </div>
+
+  <div class="section-title">Pre-departure checklist</div>
+  <div class="checklist-box">
+    <div class="check-row" onclick="toggleCheck(this)">
+      <div class="check-circle"></div>
+      <span class="check-text">All bins sorted and scanned — Edgar (Zone D) ready first</span>
+      <span class="check-who">You</span>
+    </div>
+    <div class="check-row" onclick="toggleCheck(this)">
+      <div class="check-circle"></div>
+      <span class="check-text">Address flags reviewed and resolved</span>
+      <span class="check-who">You</span>
+    </div>
+    <div class="check-row" onclick="toggleCheck(this)">
+      <div class="check-circle"></div>
+      <span class="check-text">Zone B pickup orders confirmed and added to Juan's route</span>
+      <span class="check-who">You</span>
+    </div>
+    <div class="check-row" onclick="toggleCheck(this)">
+      <div class="check-circle"></div>
+      <span class="check-text">Yesterday's reschedules added to correct bins</span>
+      <span class="check-who">Technician</span>
+    </div>
+    <div class="check-row" onclick="toggleCheck(this)">
+      <div class="check-circle"></div>
+      <span class="check-text">Edgar's route reviewed — downtown BK avoided before 10am</span>
+      <span class="check-who">You</span>
+    </div>
+    <div class="check-row" onclick="toggleCheck(this)">
+      <div class="check-circle"></div>
+      <span class="check-text">All drivers scanned out and departed</span>
+      <span class="check-who">You</span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://qqaoarqphvakgocwoxhj.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxYW9hcnFwaHZha2dvY3dveGhqIiwicm9sZSI6ImFub24iLCJpYXQiOj';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    document.getElementById('date-sub').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  async function loadDrivers() {
+    const { data, error } = await sb
+      .from('drivers')
+      .select('*, zones(*)')
+      .eq('active', true);
+    if (error || !data) { document.getElementById('drivers-grid').innerHTML = '<div class="empty-state">Could not load drivers.</div>'; return; }
+    const pillMap = { 1: ['first','Departs first'], 2: ['second','Departs 2nd · 8am'], 3: ['third','Departs 3rd · 8:30am'], 4: ['fourth','Departs last'] };
+    const stopMap = { A: 54, B: 98, C: 63, D: 32 };
+    const hoursMap = { A: '4–5', B: '9–11', C: '7–9', D: '9–11' };
+    const alertMap = {
+      A: { type: 'ok', text: 'No flags — ready to go' },
+      B: { type: 'warn', text: '1 special med address to confirm · Dr. Feldman pickup by 2pm' },
+      C: { type: 'warn', text: '1 address flag — no apt number · Christine Walsh rescheduled' },
+      D: { type: 'warn', text: '2 address flags need clearing · avoid downtown BK 8–10am' }
+    };
+    const sorted = data.sort((a, b) => (a.zones?.[0]?.departure_order || 9) - (b.zones?.[0]?.departure_order || 9));
+    document.getElementById('total-del').textContent = sorted.reduce((s, d) => s + (stopMap[d.zone] || 0), 0);
+    document.getElementById('drivers-grid').innerHTML = sorted.map((d, i) => {
+      const dep = d.zones?.[0]?.departure_order || i + 1;
+      const [pillClass, pillText] = pillMap[dep] || ['fourth', 'TBD'];
+      const stops = stopMap[d.zone] || '—';
+      const hours = hoursMap[d.zone] || '—';
+      const alert = alertMap[d.zone] || { type: 'ok', text: 'Ready' };
+      const initials = d.name.substring(0, 2).toUpperCase();
+      return `
+        <div class="driver-card ${dep === 1 ? 'first' : ''}">
+          <div class="dc-top">
+            <div class="dc-av">${initials}</div>
+            <div><div class="dc-name">${d.name} — Zone ${d.zone}</div><div class="dc-zone">${d.vehicle === 'bike' ? 'Bike · local' : 'Car · ' + (d.zones?.[0]?.zip_codes?.length || 0) + ' zip codes'}</div></div>
+            <span class="dc-pill pill-${pillClass}">${pillText}</span>
+          </div>
+          <div class="dc-stats">
+            <div class="dc-stat"><div class="dc-stat-val">${stops}</div><div class="dc-stat-lbl">Stops today</div></div>
+            <div class="dc-stat"><div class="dc-stat-val">${hours}</div><div class="dc-stat-lbl">Est. hours</div></div>
+            <div class="dc-stat"><div class="dc-stat-val">${d.vehicle}</div><div class="dc-stat-lbl">Vehicle</div></div>
+          </div>
+          <div class="dc-alert ${alert.type}">${alert.text}</div>
+        </div>`;
+    }).join('');
+  }
+  loadDrivers();
+
+  function resolveFlag(btn) {
+    btn.textContent = 'Done';
+    btn.classList.add('done');
+    btn.disabled = true;
+    const remaining = document.querySelectorAll('.resolve-btn:not(.done)').length;
+    document.getElementById('flag-count').textContent = remaining;
+    document.getElementById('flag-badge').textContent = remaining + ' flags';
+    if (remaining === 0) {
+      document.getElementById('flag-count').style.color = 'var(--success)';
+      document.getElementById('flag-badge').className = 'tb-badge ok';
+      document.getElementById('flag-badge').textContent = 'All clear';
+    }
+  }
+
+  function toggleCheck(row) {
+    const circle = row.querySelector('.check-circle');
+    const text = row.querySelector('.check-text');
+    const checked = circle.classList.toggle('checked');
+    text.classList.toggle('done', checked);
+    circle.innerHTML = checked ? '✓' : '';
+    const total = document.querySelectorAll('.check-row').length;
+    const done = document.querySelectorAll('.check-circle.checked').length;
+    document.getElementById('prog-fill').style.width = Math.round((done / total) * 100) + '%';
+  }
+</script>
+</body>
+</html>
