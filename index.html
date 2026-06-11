@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Modern Remedies — Delivery Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -46,10 +45,10 @@
     .dc-name { font-size: 14px; font-weight: 500; }
     .dc-zone { font-size: 12px; color: var(--muted); }
     .dc-pill { margin-left: auto; font-size: 11px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
-    .pill-first { background: var(--danger-bg); color: var(--danger); }
-    .pill-second { background: var(--warn-bg); color: var(--warn); }
-    .pill-third { background: var(--success-bg); color: var(--success); }
-    .pill-fourth { background: var(--info-bg); color: var(--info); }
+    .pill-1 { background: var(--danger-bg); color: var(--danger); }
+    .pill-2 { background: var(--warn-bg); color: var(--warn); }
+    .pill-3 { background: var(--success-bg); color: var(--success); }
+    .pill-4 { background: var(--info-bg); color: var(--info); }
     .dc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
     .dc-stat { background: var(--bg); border-radius: 8px; padding: 8px; text-align: center; }
     .dc-stat-val { font-size: 18px; font-weight: 500; color: var(--dark); }
@@ -73,7 +72,7 @@
     .checklist-box { background: var(--white); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; }
     .check-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); cursor: pointer; }
     .check-row:last-child { border-bottom: none; }
-    .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+    .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; transition: all 0.15s; }
     .check-circle.checked { background: var(--dark); border-color: var(--dark); color: var(--gold); }
     .check-text { flex: 1; font-size: 13px; color: var(--dark); }
     .check-text.done { color: var(--muted); text-decoration: line-through; }
@@ -112,12 +111,12 @@
 
 <div class="main">
   <div class="greeting">Good morning, Jennifer</div>
-  <div class="greeting-sub" id="date-sub">Loading...</div>
+  <div class="greeting-sub" id="date-sub"></div>
 
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-label">Total deliveries today</div>
-      <div class="stat-value gold" id="total-del">—</div>
+      <div class="stat-value gold" id="total-del">247</div>
       <div class="stat-sub">Across all 4 zones</div>
     </div>
     <div class="stat-card">
@@ -143,7 +142,7 @@
   </div>
 
   <div class="section-title">Flags to clear before departure</div>
-  <div class="flags-box" id="flags-box">
+  <div class="flags-box">
     <div class="flag-row">
       <span class="flag-badge fb-alert">Address</span>
       <span class="flag-text">Sandra Sklar — address mismatch (PrimeRx shows FL, label shows Brooklyn)</span>
@@ -236,45 +235,60 @@
   }
   updateClock(); setInterval(updateClock, 1000);
 
+  const stopMap  = { A: 54, B: 98, C: 63, D: 32 };
+  const hoursMap = { A: '4–5', B: '9–11', C: '7–9', D: '9–11' };
+  const pillText = { 1: 'Departs first', 2: 'Departs 2nd · 8am', 3: 'Departs 3rd · 8:30am', 4: 'Departs last' };
+  const alertMap = {
+    A: { type: 'ok',   text: '✓ No flags — ready to go' },
+    B: { type: 'warn', text: '⚠ 1 special med to confirm · Dr. Feldman pickup by 2pm' },
+    C: { type: 'warn', text: '⚠ 1 address flag — no apt number · Christine Walsh rescheduled' },
+    D: { type: 'warn', text: '⚠ 2 address flags need clearing · avoid downtown BK 8–10am' }
+  };
+
   async function loadDrivers() {
-    const { data, error } = await sb
-      .from('drivers')
-      .select('*, zones(*)')
-      .eq('active', true);
-    if (error || !data) { document.getElementById('drivers-grid').innerHTML = '<div class="empty-state">Could not load drivers.</div>'; return; }
-    const pillMap = { 1: ['first','Departs first'], 2: ['second','Departs 2nd · 8am'], 3: ['third','Departs 3rd · 8:30am'], 4: ['fourth','Departs last'] };
-    const stopMap = { A: 54, B: 98, C: 63, D: 32 };
-    const hoursMap = { A: '4–5', B: '9–11', C: '7–9', D: '9–11' };
-    const alertMap = {
-      A: { type: 'ok', text: 'No flags — ready to go' },
-      B: { type: 'warn', text: '1 special med address to confirm · Dr. Feldman pickup by 2pm' },
-      C: { type: 'warn', text: '1 address flag — no apt number · Christine Walsh rescheduled' },
-      D: { type: 'warn', text: '2 address flags need clearing · avoid downtown BK 8–10am' }
-    };
-    const sorted = data.sort((a, b) => (a.zones?.[0]?.departure_order || 9) - (b.zones?.[0]?.departure_order || 9));
-    document.getElementById('total-del').textContent = sorted.reduce((s, d) => s + (stopMap[d.zone] || 0), 0);
-    document.getElementById('drivers-grid').innerHTML = sorted.map((d, i) => {
-      const dep = d.zones?.[0]?.departure_order || i + 1;
-      const [pillClass, pillText] = pillMap[dep] || ['fourth', 'TBD'];
-      const stops = stopMap[d.zone] || '—';
-      const hours = hoursMap[d.zone] || '—';
-      const alert = alertMap[d.zone] || { type: 'ok', text: 'Ready' };
-      const initials = d.name.substring(0, 2).toUpperCase();
-      return `
-        <div class="driver-card ${dep === 1 ? 'first' : ''}">
-          <div class="dc-top">
-            <div class="dc-av">${initials}</div>
-            <div><div class="dc-name">${d.name} — Zone ${d.zone}</div><div class="dc-zone">${d.vehicle === 'bike' ? 'Bike · local' : 'Car · ' + (d.zones?.[0]?.zip_codes?.length || 0) + ' zip codes'}</div></div>
-            <span class="dc-pill pill-${pillClass}">${pillText}</span>
-          </div>
-          <div class="dc-stats">
-            <div class="dc-stat"><div class="dc-stat-val">${stops}</div><div class="dc-stat-lbl">Stops today</div></div>
-            <div class="dc-stat"><div class="dc-stat-val">${hours}</div><div class="dc-stat-lbl">Est. hours</div></div>
-            <div class="dc-stat"><div class="dc-stat-val">${d.vehicle}</div><div class="dc-stat-lbl">Vehicle</div></div>
-          </div>
-          <div class="dc-alert ${alert.type}">${alert.text}</div>
-        </div>`;
-    }).join('');
+    try {
+      const { data: drivers, error: de } = await sb.from('drivers').select('*').eq('active', true);
+      if (de) throw de;
+      const { data: zones, error: ze } = await sb.from('zones').select('*');
+      if (ze) throw ze;
+
+      // merge zones into drivers
+      const merged = drivers.map(d => {
+        const z = zones.find(z => z.zone_code === d.zone);
+        return { ...d, departure_order: z?.departure_order || 9, zip_count: z?.zip_codes?.length || 0 };
+      }).sort((a, b) => a.departure_order - b.departure_order);
+
+      let total = 0;
+      document.getElementById('drivers-grid').innerHTML = merged.map(d => {
+        const stops = stopMap[d.zone] || 0;
+        total += stops;
+        const dep = d.departure_order;
+        const alert = alertMap[d.zone] || { type: 'ok', text: '✓ Ready' };
+        const initials = d.name.substring(0, 2).toUpperCase();
+        const zoneDesc = d.vehicle === 'bike' ? 'Bike · local deliveries' : `Car · ${d.zip_count} zip codes`;
+        return `
+          <div class="driver-card ${dep === 1 ? 'first' : ''}">
+            <div class="dc-top">
+              <div class="dc-av">${initials}</div>
+              <div>
+                <div class="dc-name">${d.name} — Zone ${d.zone}</div>
+                <div class="dc-zone">${zoneDesc}</div>
+              </div>
+              <span class="dc-pill pill-${dep}">${pillText[dep] || 'TBD'}</span>
+            </div>
+            <div class="dc-stats">
+              <div class="dc-stat"><div class="dc-stat-val">${stops}</div><div class="dc-stat-lbl">Stops today</div></div>
+              <div class="dc-stat"><div class="dc-stat-val">${hoursMap[d.zone] || '—'}</div><div class="dc-stat-lbl">Est. hours</div></div>
+              <div class="dc-stat"><div class="dc-stat-val">${d.vehicle}</div><div class="dc-stat-lbl">Vehicle</div></div>
+            </div>
+            <div class="dc-alert ${alert.type}">${alert.text}</div>
+          </div>`;
+      }).join('');
+      document.getElementById('total-del').textContent = total;
+    } catch (err) {
+      console.error(err);
+      document.getElementById('drivers-grid').innerHTML = '<div class="empty-state">Could not load drivers. Check your Supabase keys.</div>';
+    }
   }
   loadDrivers();
 
@@ -297,9 +311,9 @@
     const text = row.querySelector('.check-text');
     const checked = circle.classList.toggle('checked');
     text.classList.toggle('done', checked);
-    circle.innerHTML = checked ? '✓' : '';
+    circle.textContent = checked ? '✓' : '';
     const total = document.querySelectorAll('.check-row').length;
-    const done = document.querySelectorAll('.check-circle.checked').length;
+    const done  = document.querySelectorAll('.check-circle.checked').length;
     document.getElementById('prog-fill').style.width = Math.round((done / total) * 100) + '%';
   }
 </script>
